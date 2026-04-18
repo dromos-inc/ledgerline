@@ -1,0 +1,14 @@
+{
+  "name": "ledgerline-electron",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron shell that runs FastAPI locally and loads the Ledgerline UI.",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "NODE_ENV=development electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.2.0"
+  }
+}
