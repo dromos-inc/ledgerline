@@ -15,6 +15,7 @@ This repo tracks the **Phase 0 + Phase 1 MVP** from the PRD:
 - FastAPI + SQLAlchemy 2 + SQLite backend, React + TypeScript + Vite + Tailwind frontend
 - Minimal Electron shell that spawns the backend and loads the UI
 - Double-entry integrity enforced at the **database layer** via SQL triggers — posted entries are immutable, balances are checked on transition, no hard deletes.
+- **Alembic migrations** for both the registry DB and per-company DBs, with v1 initial migrations landed.
 
 See [docs/PRD.md](docs/PRD.md) for the full product specification.
 
@@ -45,6 +46,7 @@ The Python backend is the single source of truth across all three tiers:
 
 - **Multi-company**: each company is its own SQLite file. Switching companies means opening a different file. Files are portable between tiers.
 - **Integrity**: per-line CHECK constraints (non-negative, exactly-one-side), plus triggers that enforce debits = credits on post, reject edits to posted entries, reject hard deletes, and make the audit log append-only.
+- **Migrations**: Alembic manages the registry schema and per-company schema independently. `ensure_registry_schema()` and `ensure_company_schema()` run migrations programmatically at server start / company creation. CLI use is supported via `alembic --name registry upgrade head` and `alembic --name company -x company=<id> upgrade head`.
 - **API-first**: every feature is exposed by a documented HTTP endpoint. OpenAPI spec at `/openapi.json`, Swagger UI at `/docs`.
 
 ## Repository layout
@@ -55,7 +57,7 @@ ledgerline/
 │   ├── app/
 │   │   ├── main.py          App factory, /health, OpenAPI
 │   │   ├── config.py        Settings (env-driven)
-│   │   ├── db/              Engines, sessions, schema bootstrap, triggers
+│   │   ├── db/              Engines, sessions, schema bootstrap (via Alembic)
 │   │   ├── models/          ORM models (Company, Account, JournalEntry, AuditLog)
 │   │   ├── schemas/         Pydantic request/response
 │   │   ├── services/        Business logic (post/void, CoA seeding, import/export)
@@ -63,6 +65,9 @@ ledgerline/
 │   │   ├── reports/         Trial balance, P&L, balance sheet
 │   │   ├── export/          CSV and JSON exporters
 │   │   └── seed/            Default chart-of-accounts templates
+│   ├── alembic/             Registry DB migration tree
+│   ├── alembic_company/     Per-company DB migration tree
+│   ├── alembic.ini          Two-database Alembic config
 │   ├── tests/               pytest (56 tests, all green)
 │   └── Dockerfile           Multi-stage build for self-hosted/cloud tiers
 ├── frontend/        React + TS + Vite + Tailwind
@@ -100,6 +105,26 @@ make lint
 
 The frontend opens on `http://localhost:5173`. Swagger UI is at `http://localhost:8787/docs`.
 Press `Shift+?` in the UI to see every keyboard shortcut.
+
+## Schema migrations
+
+Alembic runs automatically at server startup (for the registry DB) and
+at company creation (for each company DB). To inspect or roll back by
+hand:
+
+```bash
+cd backend
+. .venv/bin/activate
+
+# Registry DB
+alembic --name registry current        # show current revision
+alembic --name registry history
+alembic --name registry upgrade head
+
+# A specific company DB
+alembic --name company -x company=dromos-inc current
+alembic --name company -x company=dromos-inc upgrade head
+```
 
 ## Self-host
 
@@ -139,10 +164,10 @@ See `docker-compose.yml` for configuration knobs (`LEDGERLINE_CORS_ORIGINS` is t
 - ✅ Docker Compose bundle for self-hosting
 - ✅ CI: pytest matrix (Py 3.9, 3.11, 3.12), ruff, frontend typecheck + build
 - ✅ Global keyboard-shortcut framework with discoverable help overlay (`Shift+?`). Bindings: Ctrl+1..4 (navigate), Ctrl+J (new entry), Ctrl+Enter (post), N (new account), Esc (cancel), Ctrl+Shift+C (switch company)
+- ✅ Alembic migrations for registry and per-company DBs with v1 initial migrations (PRD §15 Q10)
 
 **Deferred**:
 
-- Alembic migrations (currently `create_all` with a `schema_version` table — retrofit scheduled for Phase 1 exit per PRD §15 Q10)
 - AR/AP, banking, Plaid, desktop polish, inventory, payroll — PRD Phases 2–9
 
 ## License
