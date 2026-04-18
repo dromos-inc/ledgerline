@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request, status
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.db.session import get_registry_session
 from app.schemas.company import CompanyCreate, CompanyRead, CompanyUpdate
+from app.seed import TEMPLATES
 from app.services import company as service
 
 router = APIRouter(prefix="/companies", tags=["companies"])
@@ -31,10 +34,44 @@ def list_companies(session: Session = Depends(get_registry_session)) -> list[Com
 def create_company(
     payload: CompanyCreate,
     request: Request,
+    template: Optional[str] = Query(
+        default=None,
+        description=(
+            "Optional: key of a chart-of-accounts template to seed (e.g. "
+            "'sched_c_service', 'sched_c_retail', 's_corp_general'). "
+            "See GET /templates."
+        ),
+    ),
     session: Session = Depends(get_registry_session),
 ) -> CompanyRead:
-    company = service.create_company(session, payload, _settings(request))
+    if template is not None and template not in TEMPLATES:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"unknown template {template!r}; "
+                f"available: {sorted(TEMPLATES)}"
+            ),
+        )
+    company = service.create_company(
+        session, payload, _settings(request), template=template
+    )
     return CompanyRead.model_validate(company)
+
+
+@router.get("/templates", tags=["templates"])
+def list_templates() -> list[dict]:
+    """List available chart-of-accounts templates."""
+    return [
+        {
+            "key": t.key,
+            "label": t.label,
+            "description": t.description,
+            "account_count": len(t.accounts),
+        }
+        for t in TEMPLATES.values()
+    ]
 
 
 @router.get("/{company_id}", response_model=CompanyRead)

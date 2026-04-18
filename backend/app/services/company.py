@@ -13,8 +13,10 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.db.engines import company_engine
 from app.db.schema import ensure_company_schema
+from app.db.session import company_session
 from app.models.registry import Company
 from app.schemas.company import CompanyCreate, CompanyUpdate
+from app.services.seed import apply_template
 
 
 def list_companies(session: Session) -> list[Company]:
@@ -33,7 +35,11 @@ def get_company(session: Session, company_id: str) -> Company:
 
 
 def create_company(
-    session: Session, payload: CompanyCreate, settings: Settings
+    session: Session,
+    payload: CompanyCreate,
+    settings: Settings,
+    *,
+    template: str | None = None,
 ) -> Company:
     existing = session.get(Company, payload.id)
     if existing is not None:
@@ -48,6 +54,11 @@ def create_company(
     # Provision the company database file.
     engine = company_engine(settings, company.id)
     ensure_company_schema(engine)
+
+    if template:
+        with company_session(company.id, settings) as co_session:
+            apply_template(co_session, template)
+
     return company
 
 
