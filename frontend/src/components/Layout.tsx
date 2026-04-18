@@ -1,10 +1,29 @@
 import type { ReactNode } from "react";
 
+type View = "accounts" | "journal" | "register" | "reports";
+
 interface Props {
   children: ReactNode;
+  companyId: string | null;
+  view: View;
+  onSwitchView: (view: View) => void;
+  onSwitchCompany: () => void;
 }
 
-export function Layout({ children }: Props) {
+const NAV: { key: View; label: string }[] = [
+  { key: "accounts", label: "Accounts" },
+  { key: "journal", label: "Journal" },
+  { key: "register", label: "Register" },
+  { key: "reports", label: "Reports" },
+];
+
+export function Layout({
+  children,
+  companyId,
+  view,
+  onSwitchView,
+  onSwitchCompany,
+}: Props) {
   return (
     <div className="min-h-screen">
       <header className="border-b border-ink-200 bg-white">
@@ -13,22 +32,38 @@ export function Layout({ children }: Props) {
             <span className="font-mono text-sm font-semibold tracking-tight">
               ledgerline
             </span>
-            <span className="text-xs text-ink-400">v0.1.0</span>
+            {companyId && (
+              <>
+                <span className="text-ink-300">/</span>
+                <button
+                  type="button"
+                  onClick={onSwitchCompany}
+                  className="font-mono text-sm text-ink-700 hover:text-accent"
+                  title="Switch company"
+                >
+                  {companyId}
+                </button>
+              </>
+            )}
           </div>
-          <nav className="flex items-center gap-5 text-sm">
-            <a href="#" className="text-ink-500 hover:text-ink-900">
-              Companies
-            </a>
-            <a href="#" className="text-ink-500 hover:text-ink-900">
-              Accounts
-            </a>
-            <a href="#" className="text-ink-500 hover:text-ink-900">
-              Journal
-            </a>
-            <a href="#" className="text-ink-500 hover:text-ink-900">
-              Reports
-            </a>
-          </nav>
+          {companyId && (
+            <nav className="flex items-center gap-5 text-sm">
+              {NAV.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => onSwitchView(item.key)}
+                  className={
+                    view === item.key
+                      ? "font-semibold text-ink-900"
+                      : "text-ink-500 hover:text-ink-900"
+                  }
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+          )}
         </div>
       </header>
       <main>{children}</main>

@@ -1,56 +1,59 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Layout } from "./components/Layout";
+import { useSelectedCompany } from "./hooks/useSelectedCompany";
+import { Accounts } from "./views/Accounts";
+import { CompanyPicker } from "./views/CompanyPicker";
+import { JournalEntries } from "./views/JournalEntries";
 
-interface Health {
-  status: string;
-  version: string;
-}
+type View = "accounts" | "journal" | "register" | "reports";
 
 export function App() {
-  const { data, isLoading, isError, error } = useQuery<Health>({
-    queryKey: ["health"],
-    queryFn: async () => {
-      const resp = await fetch("/api/v1/../health");
-      if (!resp.ok) {
-        throw new Error(`/health returned ${resp.status}`);
-      }
-      return resp.json();
-    },
-  });
+  const [companyId, setCompanyId] = useSelectedCompany();
+  const [view, setView] = useState<View>("accounts");
+
+  if (!companyId) {
+    return (
+      <Layout
+        companyId={null}
+        view={view}
+        onSwitchView={setView}
+        onSwitchCompany={() => setCompanyId(null)}
+      >
+        <CompanyPicker onPick={(id) => setCompanyId(id)} />
+      </Layout>
+    );
+  }
 
   return (
-    <Layout>
-      <div className="mx-auto max-w-3xl px-6 py-10">
-        <h1 className="text-3xl font-semibold tracking-tight">Ledgerline</h1>
-        <p className="mt-3 text-ink-500">
-          A lean, keyboard-first double-entry accounting platform.
-        </p>
-        <section className="mt-10 rounded border border-ink-200 bg-white p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-ink-400">
-            Backend status
-          </h2>
-          {isLoading && (
-            <p className="mt-2 font-mono text-sm text-ink-500">
-              Connecting to localhost:8787…
-            </p>
-          )}
-          {isError && (
-            <p className="mt-2 font-mono text-sm text-danger">
-              Error: {(error as Error)?.message ?? "unknown"}
-            </p>
-          )}
-          {data && (
-            <p className="mt-2 font-mono text-sm text-success">
-              OK · v{data.version}
-            </p>
-          )}
-          <p className="mt-4 text-sm text-ink-500">
-            Route the browser to <code className="font-mono">/api/v1/docs</code> for
-            the OpenAPI spec. Commands tables and the rest of the UI land in
-            later commits.
-          </p>
-        </section>
-      </div>
+    <Layout
+      companyId={companyId}
+      view={view}
+      onSwitchView={setView}
+      onSwitchCompany={() => setCompanyId(null)}
+    >
+      {view === "accounts" && <Accounts companyId={companyId} />}
+      {view === "journal" && <JournalEntries companyId={companyId} />}
+      {view === "register" && (
+        <Placeholder title="Register" subtitle="Lands in the next commit." />
+      )}
+      {view === "reports" && (
+        <Placeholder title="Reports" subtitle="Lands in the next commit." />
+      )}
     </Layout>
+  );
+}
+
+function Placeholder({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <div className="mx-auto max-w-3xl px-6 py-16 text-center">
+      <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
+      <p className="mt-2 text-sm text-ink-500">{subtitle}</p>
+    </div>
   );
 }
