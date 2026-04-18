@@ -7,13 +7,20 @@ response content type is ``text/csv`` with a filename suggestion.
 from __future__ import annotations
 
 from datetime import date
-from typing import Optional
+from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session
 
-from app.db.session import get_company_session
+from app.config import Settings
+from app.db.session import (
+    company_session,
+    get_company_session,
+    registry_session,
+)
 from app.export.csv import cents_to_dollars, to_csv
+from app.export.json_dump import dump_company
+from app.models.registry import Company
 from app.reports.balance_sheet import build_balance_sheet
 from app.reports.basis import Basis
 from app.reports.profit_loss import build_profit_loss
@@ -198,6 +205,22 @@ def profit_loss_csv(
     return _csv_response(
         to_csv(header, rows), f"profit-loss-{start_date}-to-{end_date}.csv"
     )
+
+
+@router.get("/company.json")
+def full_company_json(
+    company_id: str,
+    request: Request,
+) -> dict[str, Any]:
+    """Full-company JSON export. Round-trip safe."""
+    settings: Settings = request.app.state.settings
+    with registry_session(settings) as reg_sess, company_session(
+        company_id, settings
+    ) as co_sess:
+        company = reg_sess.get(Company, company_id)
+        if company is None:
+            raise HTTPException(status_code=404, detail=f"company {company_id!r} not found")
+        return dump_company(reg_sess, co_sess, company_id)
 
 
 @router.get("/reports/balance-sheet.csv")
