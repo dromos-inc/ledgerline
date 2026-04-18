@@ -8,10 +8,15 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_company_session
+from app.reports.balance_sheet import build_balance_sheet
 from app.reports.basis import Basis
 from app.reports.profit_loss import build_profit_loss
 from app.reports.trial_balance import build_trial_balance
-from app.schemas.reports import ProfitLossReport, TrialBalanceReport
+from app.schemas.reports import (
+    BalanceSheetReport,
+    ProfitLossReport,
+    TrialBalanceReport,
+)
 
 router = APIRouter(
     prefix="/companies/{company_id}/reports",
@@ -46,3 +51,12 @@ def profit_loss(
         basis=basis,
         compare_prior_period=compare_prior_period,
     )
+
+
+@router.get("/balance-sheet", response_model=BalanceSheetReport)
+def balance_sheet(
+    as_of_date: date = Query(..., description="Inclusive as-of date."),
+    basis: Basis = Query(default=Basis.ACCRUAL),
+    session: Session = Depends(get_company_session),
+) -> BalanceSheetReport:
+    return build_balance_sheet(session, as_of_date=as_of_date, basis=basis)
