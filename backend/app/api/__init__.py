@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, FastAPI
 
-from app.api import accounts, companies, journal
+from app.api import accounts, companies, journal, register
 
 
 def register_routers(app: FastAPI, *, prefix: str) -> None:
@@ -18,4 +18,5 @@ def register_routers(app: FastAPI, *, prefix: str) -> None:
     api.include_router(companies.router)
     api.include_router(accounts.router)
     api.include_router(journal.router)
+    api.include_router(register.router)
     app.include_router(api)
