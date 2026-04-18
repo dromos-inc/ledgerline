@@ -70,7 +70,8 @@ ledgerline/
 │   │   ├── api/             Typed API client + money helpers
 │   │   ├── views/            Companies, Accounts, Journal, Register, Reports
 │   │   ├── components/      Layout shell
-│   │   └── hooks/            useSelectedCompany
+│   │   ├── hooks/            useSelectedCompany
+│   │   └── shortcuts/       Keyboard-shortcut framework + help overlay
 │   └── vite.config.ts       Dev server + /api proxy
 ├── electron/        Minimal shell: spawn FastAPI + load UI
 ├── docs/            PRD
@@ -98,6 +99,7 @@ make lint
 ```
 
 The frontend opens on `http://localhost:5173`. Swagger UI is at `http://localhost:8787/docs`.
+Press `Shift+?` in the UI to see every keyboard shortcut.
 
 ## Self-host
 
@@ -136,11 +138,11 @@ See `docker-compose.yml` for configuration knobs (`LEDGERLINE_CORS_ORIGINS` is t
 - ✅ Electron shell for the local tier
 - ✅ Docker Compose bundle for self-hosting
 - ✅ CI: pytest matrix (Py 3.9, 3.11, 3.12), ruff, frontend typecheck + build
+- ✅ Global keyboard-shortcut framework with discoverable help overlay (`Shift+?`). Bindings: Ctrl+1..4 (navigate), Ctrl+J (new entry), Ctrl+Enter (post), N (new account), Esc (cancel), Ctrl+Shift+C (switch company)
 
 **Deferred**:
 
 - Alembic migrations (currently `create_all` with a `schema_version` table — retrofit scheduled for Phase 1 exit per PRD §15 Q10)
-- Keyboard-shortcut framework (stubs present in the UI; global bindings land in a follow-on)
 - AR/AP, banking, Plaid, desktop polish, inventory, payroll — PRD Phases 2–9
 
 ## License
