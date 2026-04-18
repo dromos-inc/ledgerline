@@ -1,0 +1,37 @@
+# Self-hosted tier: Ledgerline behind a reverse proxy.
+#
+# This compose file is the minimum a self-host operator needs to get
+# Ledgerline running. It is NOT the dev setup (that's `make dev` from
+# the repo root). PRD §15 Q9: "Docker Compose bundle at launch. Bare
+# installer considered only if demand proves it out."
+#
+# Phase 5 adds: Postgres sync backend, object storage for attachments,
+# optional reverse-proxy container with TLS.
+
+services:
+  ledgerline:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: ledgerline
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      LEDGERLINE_HOST: "0.0.0.0"
+      LEDGERLINE_PORT: "8787"
+      LEDGERLINE_DATA_DIR: "/data"
+      # Self-hosters should set this to their reverse proxy's public origin.
+      LEDGERLINE_CORS_ORIGINS: "http://localhost:5173"
+    volumes:
+      - ledgerline_data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8787/health').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  ledgerline_data:
+    driver: local
