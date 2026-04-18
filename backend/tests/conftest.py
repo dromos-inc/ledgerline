@@ -14,7 +14,16 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.config import Settings
+from app.db.engines import dispose_company_engines
 from app.main import create_app
+
+
+@pytest.fixture(autouse=True)
+def _dispose_engines() -> Iterator[None]:
+    """Clear the engine cache between tests so each gets its own tmp DB."""
+    dispose_company_engines()
+    yield
+    dispose_company_engines()
 
 
 @pytest.fixture
