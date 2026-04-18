@@ -1,13 +1,14 @@
 // Chart of accounts: list, create, deactivate.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useCallback, useState, type FormEvent } from "react";
 import {
   accounts as accountsApi,
   ApiError,
   type Account,
   type AccountType,
 } from "../api";
+import { useShortcut } from "../shortcuts";
 
 interface Props {
   companyId: string;
@@ -31,6 +32,17 @@ export function Accounts({ companyId }: Props) {
     queryKey: ["accounts", companyId, includeInactive],
     queryFn: () => svc.list(includeInactive),
   });
+
+  const openNew = useCallback(() => setShowCreate(true), []);
+  useShortcut(
+    {
+      id: "n",
+      description: "New account",
+      group: "Accounts",
+      when: () => !showCreate,
+    },
+    openNew,
+  );
 
   const deactivate = useMutation({
     mutationFn: (id: number) => svc.deactivate(id),

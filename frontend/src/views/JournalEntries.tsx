@@ -1,7 +1,7 @@
 // Journal entry list with void action.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ApiError,
   formatCents,
@@ -10,6 +10,7 @@ import {
   type JournalEntryList,
   type JournalStatus,
 } from "../api";
+import { useShortcut } from "../shortcuts";
 import { JournalEntryForm } from "./JournalEntryForm";
 
 interface Props {
@@ -37,6 +38,17 @@ export function JournalEntries({ companyId }: Props) {
     mutationFn: (id) => svc.voidEntry(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["journal", companyId] }),
   });
+
+  const openNew = useCallback(() => setShowNew(true), []);
+  useShortcut(
+    {
+      id: "ctrl+j",
+      description: "New journal entry",
+      group: "Journal",
+      when: () => !showNew,
+    },
+    openNew,
+  );
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">

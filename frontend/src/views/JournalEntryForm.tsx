@@ -1,7 +1,7 @@
 // New / draft journal entry form. Multi-line grid with live balance check.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type FormEvent } from "react";
+import { useCallback, useMemo, useState, type FormEvent } from "react";
 import {
   accounts as accountsApi,
   ApiError,
@@ -12,6 +12,7 @@ import {
   type JournalEntry,
   type JournalLineCreate,
 } from "../api";
+import { useShortcut } from "../shortcuts";
 
 interface Props {
   companyId: string;
@@ -135,6 +136,51 @@ export function JournalEntryForm({ companyId, onPosted, onCancel }: Props) {
   }
 
   const balanced = totals.diff === 0 && totals.debit > 0;
+
+  // Ctrl+Enter to post when balanced.
+  const submitShortcut = useCallback(() => {
+    if (balanced && !createAndPost.isPending) {
+      // Synthetic submit: build the same payload as the form handler.
+      try {
+        const payload: JournalLineCreate[] = lines.map((l, i) => {
+          if (l.accountId == null) throw new Error(`Line ${i + 1}: pick an account`);
+          const d = l.debit ? parseDollars(l.debit) : 0;
+          const c = l.credit ? parseDollars(l.credit) : 0;
+          if ((d > 0) === (c > 0)) {
+            throw new Error(
+              `Line ${i + 1}: enter exactly one of debit or credit (> 0)`,
+            );
+          }
+          return {
+            account_id: l.accountId,
+            debit_cents: d,
+            credit_cents: c,
+            memo: l.memo || undefined,
+          };
+        });
+        createAndPost.mutate(payload);
+      } catch (err) {
+        setError((err as Error).message);
+      }
+    }
+  }, [balanced, createAndPost, lines]);
+
+  useShortcut(
+    {
+      id: "ctrl+enter",
+      description: "Post entry",
+      group: "Journal Entry",
+    },
+    submitShortcut,
+  );
+  useShortcut(
+    {
+      id: "escape",
+      description: "Cancel entry",
+      group: "Journal Entry",
+    },
+    onCancel,
+  );
 
   return (
     <form
