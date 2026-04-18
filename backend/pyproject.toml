@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ledgerline-backend"
+version = "0.1.0"
+description = "Ledgerline API server. Double-entry accounting, keyboard-first, portable."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Dromos Inc." }]
+
+dependencies = [
+    "fastapi>=0.110,<0.200",
+    "uvicorn[standard]>=0.27,<0.40",
+    "sqlalchemy>=2.0,<3.0",
+    "alembic>=1.13,<2.0",
+    "pydantic>=2.5,<3.0",
+    "pydantic-settings>=2.1,<3.0",
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<9.0",
+    "pytest-asyncio>=0.23,<1.0",
+    "httpx>=0.27,<1.0",
+    "ruff>=0.4,<1.0",
+    "mypy>=1.9,<2.0",
+]
+
+[project.scripts]
+ledgerline-api = "app.main:run"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM", "RUF"]
+ignore = [
+    "E501",  # line length, handled by formatter
+    "B008",  # FastAPI uses function calls in defaults (Depends())
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]  # asserts fine in tests
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra --strict-markers"
+asyncio_mode = "auto"
