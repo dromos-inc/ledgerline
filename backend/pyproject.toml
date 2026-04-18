@@ -45,6 +45,8 @@ select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM", "RUF"]
 ignore = [
     "E501",  # line length, handled by formatter
     "B008",  # FastAPI uses function calls in defaults (Depends())
+    "UP045", # Optional[X] required for SQLAlchemy annotation eval on Py 3.9
+    "UP007", # Same reason: Union syntax for runtime type introspection
 ]
 
 [tool.ruff.lint.per-file-ignores]

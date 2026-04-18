@@ -10,6 +10,7 @@ callers don't change.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from sqlalchemy import Engine, text
 
@@ -19,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 # Bumped when a schema change lands.
 SCHEMA_VERSION = 1
+
+_TRIGGERS_SQL_PATH = Path(__file__).parent / "triggers.sql"
 
 
 def _record_schema_version(engine: Engine, version: int) -> None:
@@ -43,6 +46,27 @@ def _record_schema_version(engine: Engine, version: int) -> None:
         )
 
 
+def _apply_triggers(engine: Engine) -> None:
+    """Apply company-DB integrity triggers from the bundled SQL file.
+
+    Triggers include embedded ``;`` inside their ``BEGIN ... END`` blocks,
+    which defeats naive statement splitters. SQLite's ``executescript`` on
+    the raw DBAPI connection handles the multi-statement file correctly.
+    """
+    if not _TRIGGERS_SQL_PATH.exists():
+        raise RuntimeError(f"triggers.sql not found at {_TRIGGERS_SQL_PATH}")
+    sql = _TRIGGERS_SQL_PATH.read_text()
+    # executescript auto-commits any in-progress transaction; open a fresh
+    # connection outside of SQLAlchemy's transactional wrapper.
+    raw = engine.raw_connection()
+    try:
+        cursor = raw.cursor()
+        cursor.executescript(sql)
+        raw.commit()
+    finally:
+        raw.close()
+
+
 def ensure_registry_schema(engine: Engine) -> None:
     """Create all registry tables if not already present."""
     # Importing here avoids circular imports: models pull Base which pulls
@@ -55,14 +79,16 @@ def ensure_registry_schema(engine: Engine) -> None:
 
 
 def ensure_company_schema(engine: Engine) -> None:
-    """Create all company-scoped tables if not already present."""
-    # Import all company-scoped models so Base.metadata knows about them.
-    # Each import triggers table registration as a side effect.
-    # NOTE: every new model file must be imported here.
+    """Create all company-scoped tables and triggers.
+
+    Every new per-company model must be imported here so ``create_all``
+    sees it.
+    """
     from app.models import account as _account  # noqa: F401
     from app.models import audit as _audit  # noqa: F401
     from app.models import journal as _journal  # noqa: F401
 
     CompanyBase.metadata.create_all(engine)
+    _apply_triggers(engine)
     _record_schema_version(engine, SCHEMA_VERSION)
     logger.debug("Company schema ensured at version %s", SCHEMA_VERSION)
