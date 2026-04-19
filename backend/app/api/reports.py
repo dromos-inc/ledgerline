@@ -126,5 +126,6 @@ def sub_ledger_reconciliation(
         "ar_control_account_code": report.ar_control_account_code,
         "ar_control_balance_cents": report.ar_control_balance_cents,
         "ar_sub_ledger_cents": report.ar_sub_ledger_cents,
+        "ar_unapplied_credits_cents": report.ar_unapplied_credits_cents,
         "ar_difference_cents": report.ar_difference_cents,
     }
