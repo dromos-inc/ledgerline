@@ -408,8 +408,18 @@ def post_invoice(
 
 
 def _has_active_applications(session: Session, invoice_id: int) -> list[int]:
-    stmt = select(PaymentApplication.id).where(
-        PaymentApplication.invoice_id == invoice_id
+    """Return ids of applications from non-voided payments.
+
+    Voided payments leave their PaymentApplication rows in place for
+    history; they don't count against voiding an invoice.
+    """
+    from app.models.payment import Payment
+
+    stmt = (
+        select(PaymentApplication.id)
+        .join(Payment, Payment.id == PaymentApplication.payment_id)
+        .where(PaymentApplication.invoice_id == invoice_id)
+        .where(Payment.status != "void")
     )
     return list(session.execute(stmt).scalars().all())
 
