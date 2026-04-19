@@ -1,0 +1,92 @@
+---
+# Keep in sync with .github/workflows/ci.yaml (lint/test coverage).
+# Linter configs in sync/linters/ — source of truth: sync/linters/ in dromos-inc/.github-private
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        args: ["--markdown-linebreak-ext=md"]
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-case-conflict
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.0
+    hooks:
+      - id: actionlint
+
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.10.0
+    hooks:
+      - id: shellcheck
+        files: '\.sh$'
+        args: ["--rcfile=sync/linters/shell.conf"]
+
+  - repo: https://github.com/biomejs/pre-commit
+    rev: v0.6.1
+    hooks:
+      - id: biome-check
+        files: '\.(js|jsx|ts|tsx|mjs|cjs)$'
+        args: ["--config-path=sync/linters/javascript.json"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        files: '\.py$'
+        args: ["--config=sync/linters/python.toml"]
+      - id: ruff-format
+        files: '\.py$'
+        args: ["--config=sync/linters/python.toml"]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        files: '^src/.*\.py$'
+        args: ["--ignore-missing-imports"]
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        files: '\.(yml|yaml)$'
+        args: ["-c", "sync/linters/yaml.yaml"]
+
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.42.0
+    hooks:
+      - id: markdownlint
+        files: '\.md$'
+        args: ["--config", "sync/linters/markdown.yaml"]
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        files: '\.py$'
+        language: system
+        pass_filenames: false
+        entry: >-
+          bash -lc 'if [ -d tests ] && \
+            find tests -type f \( -name "test_*.py" -o -name "*_test.py" \) | \
+            grep -q .; then pytest -q; else echo "No tests to run"; fi'
+      - id: npm-test
+        name: npm test
+        language: system
+        pass_filenames: false
+        files: '\.(js|jsx|ts|tsx|mjs|cjs)$'
+        entry: >-
+          bash -lc 'if [ -f package.json ]; then npm test --if-present;
+          else echo "No package.json; skipping"; fi'
+      - id: bats
+        name: bats
+        language: system
+        pass_filenames: false
+        files: '\.bats$'
+        entry: >-
+          bash -lc 'if git ls-files "*.bats" | grep -q .; then \
+          bats $(git ls-files "*.bats"); else echo "No BATS tests"; fi'
