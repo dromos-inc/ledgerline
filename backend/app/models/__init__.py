@@ -18,5 +18,8 @@ from __future__ import annotations
 from app.models import account as _account  # noqa: F401
 from app.models import audit as _audit  # noqa: F401
 from app.models import contact as _contact  # noqa: F401
+from app.models import invoice as _invoice  # noqa: F401
+from app.models import item as _item  # noqa: F401
 from app.models import journal as _journal  # noqa: F401
+from app.models import payment as _payment  # noqa: F401
 from app.models import tax_code as _tax_code  # noqa: F401
