@@ -59,11 +59,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "pnpm"
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          # TODO: re-enable pnpm caching once frontend/pnpm-lock.yaml is
+          # committed. Without the lockfile, setup-node fails at cache-key
+          # resolution ("Some specified paths were not resolved, unable
+          # to cache dependencies"), blocking every frontend CI run.
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline || pnpm install
+        run: pnpm install --prefer-offline
 
       - name: Typecheck
         run: pnpm typecheck
