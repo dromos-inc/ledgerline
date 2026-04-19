@@ -1,0 +1,125 @@
+# golangci-lint configuration
+# Copy to project root as .golangci.yml
+---
+run:
+  # Go version to use for analysis
+  go: "1.21"
+  # Timeout for analysis
+  timeout: 5m
+  # Include test files
+  tests: true
+  # Skip vendor directory
+  skip-dirs:
+    - vendor
+    - third_party
+
+linters:
+  enable:
+    # Default linters
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Report suspicious constructs
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Static analysis checks
+    - unused        # Check for unused code
+
+    # Additional recommended linters
+    - bodyclose     # Check HTTP response body is closed
+    - dupl          # Detect duplicate code
+    - gocyclo       # Check cyclomatic complexity
+    - gofmt         # Check formatting
+    - goimports     # Check imports
+    - goconst       # Find repeated strings that could be constants
+    - gocritic      # Comprehensive linting
+    - godot         # Check comments end with period
+    - gosec         # Security checks (NEVER disable)
+    - misspell      # Check spelling
+    - prealloc      # Suggest preallocations
+    - revive        # Drop-in replacement for golint
+    - unconvert     # Remove unnecessary type conversions
+    - unparam       # Report unused function parameters
+    - whitespace    # Check for leading/trailing whitespace
+
+linters-settings:
+  errcheck:
+    # Check type assertions
+    check-type-assertions: true
+    # Check blank identifier assignments
+    check-blank: true
+
+  gocyclo:
+    # Maximum complexity allowed
+    min-complexity: 15
+
+  govet:
+    # Enable all analyzers
+    enable-all: true
+
+  gosec:
+    # Include all rules - NEVER exclude security rules
+    includes:
+      - G101  # Hardcoded credentials
+      - G102  # Bind to all interfaces
+      - G103  # Audit unsafe block
+      - G104  # Audit errors not checked
+      - G106  # Audit ssh.InsecureIgnoreHostKey
+      - G107  # URL provided to HTTP request as taint input
+      - G108  # Profiling endpoint exposed
+      - G109  # Integer overflow
+      - G110  # Decompression bomb
+      - G201  # SQL query construction
+      - G202  # SQL query formatting
+      - G203  # HTML template escaping
+      - G204  # Subprocess with variable
+      - G301  # Poor file permissions
+      - G302  # Poor file permissions
+      - G303  # Creating tempfile
+      - G304  # File path from taint input
+      - G305  # File traversal
+      - G306  # Poor file permissions
+      - G307  # Deferring Close before checking error
+      - G401  # Weak crypto
+      - G402  # TLS InsecureSkipVerify
+      - G403  # Weak RSA key
+      - G404  # Insecure random
+      - G501  # Blacklisted import crypto/md5
+      - G502  # Blacklisted import crypto/des
+      - G503  # Blacklisted import crypto/rc4
+      - G504  # Blacklisted import net/http/cgi
+      - G505  # Blacklisted import crypto/sha1
+      - G601  # Implicit memory aliasing in for loop
+
+  revive:
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: increment-decrement
+      - name: indent-error-flow
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: var-declaration
+      - name: var-naming
+
+  misspell:
+    locale: US
+
+issues:
+  # Show all issues
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+  exclude-rules:
+    # Allow long test functions
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - dupl
