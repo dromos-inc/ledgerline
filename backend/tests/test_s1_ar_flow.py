@@ -370,6 +370,60 @@ def test_void_voided_invoice_is_idempotent(client: TestClient, co):
     assert r2.json()["status"] == "void"
 
 
+# --- Reconciliation with unapplied payment credits -----------------------
+
+
+def test_reconciliation_holds_with_unapplied_payment(client: TestClient, co):
+    """A payment with an unapplied portion credits AR for the full amount
+    but only the applied portion reduces invoice balances. The
+    reconciliation report must still report zero drift because the
+    unapplied credit sits on AR as negative balance. Regression test for
+    Devin review comment on PR #6."""
+    cust_id = _create_customer(client)
+    inv = _create_draft_invoice(client, cust_id, co["revenue"]["id"], amount_cents=80000)
+    _post_invoice(client, inv["id"])
+
+    # Pay $1000 against an $800 invoice: $800 applied, $200 unapplied
+    # (customer credit for future invoices).
+    r = client.post(
+        f"/api/v1/companies/{COMPANY_ID}/payments",
+        json={
+            "customer_id": cust_id,
+            "payment_date": "2026-04-10",
+            "amount_cents": 100000,
+            "deposit_account_id": co["cash"]["id"],
+            "method": "check",
+            "applications": [
+                {"invoice_id": inv["id"], "amount_cents": 80000}
+            ],
+        },
+    )
+    assert r.status_code == 201, r.json()
+    assert r.json()["applied_cents"] == 80000
+    assert r.json()["unapplied_cents"] == 20000
+
+    # Invoice is fully paid.
+    r_inv = client.get(f"/api/v1/companies/{COMPANY_ID}/invoices/{inv['id']}")
+    assert r_inv.json()["status"] == "paid"
+    assert r_inv.json()["balance_cents"] == 0
+
+    # Reconciliation: AR control = $800 Dr - $1000 Cr = -$200.
+    # Sub-ledger balances = $0 (invoice fully paid).
+    # Unapplied credit = $200.
+    # Effective sub-ledger = $0 - $200 = -$200.
+    # Difference = -$200 - (-$200) = 0. ✓
+    r_rec = client.get(
+        f"/api/v1/companies/{COMPANY_ID}/reports/sub-ledger-reconciliation",
+        params={"as_of_date": "2026-04-10"},
+    )
+    assert r_rec.status_code == 200
+    body = r_rec.json()
+    assert body["ar_unapplied_credits_cents"] == 20000
+    assert body["ar_control_balance_cents"] == -20000
+    assert body["ar_sub_ledger_cents"] == 0
+    assert body["ar_difference_cents"] == 0
+
+
 # --- AR aging -------------------------------------------------------------
 
 
