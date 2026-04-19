@@ -50,12 +50,18 @@ class JournalStatus(str, enum.Enum):
 class JournalSource(str, enum.Enum):
     """Which feature produced this entry.
 
-    MVP only uses MANUAL and REVERSAL. Future phases add INVOICE, BILL,
-    PAYMENT, BANK_IMPORT, etc.
+    Phase 1 only used MANUAL and REVERSAL. Phase 2 adds INVOICE and
+    PAYMENT for the AR sub-ledger (plus BILL and BILL_PAYMENT when S2
+    lands). The ``trg_accounts_control_no_direct_je`` trigger keys off
+    ``source_type='manual'`` to forbid manual JEs against control
+    accounts, so sub-ledger-generated JEs must carry a non-manual
+    value here to land successfully.
     """
 
     MANUAL = "manual"
     REVERSAL = "reversal"
+    INVOICE = "invoice"
+    PAYMENT = "payment"
 
 
 class JournalEntry(CompanyBase):
