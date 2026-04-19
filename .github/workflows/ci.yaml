@@ -1,0 +1,55 @@
+---
+name: Full CI
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  issues:
+    types: [opened, edited, closed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  # CI checks (lint, test, etc.)
+  ci:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    uses: dromos-inc/.github-private/.github/workflows/ci.yaml@main
+    secrets: inherit
+
+  # Issue management (relationships, status labels)
+  issues:
+    if: github.event_name == 'issues' || github.event_name == 'workflow_dispatch'
+    uses: dromos-inc/.github-private/.github/workflows/issues.yaml@main
+    secrets: inherit
+
+  # PR automation (auto-assign reviewers)
+  pr:
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    uses: dromos-inc/.github-private/.github/workflows/pr.yaml@main
+    secrets: inherit
+
+  # Bridge job: surfaces result as top-level "CI Gate" check.
+  # The reusable workflow reports "ci / CI Gate" which doesn't match
+  # the org ruleset's required check context "CI Gate".
+  gate:
+    name: CI Gate
+    needs: ci
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check result
+        run: |
+          if [ "${{ needs.ci.result }}" = "success" ] || \
+             [ "${{ needs.ci.result }}" = "skipped" ]; then
+            echo "CI passed"
+          else
+            echo "::error::CI failed"
+            exit 1
+          fi
