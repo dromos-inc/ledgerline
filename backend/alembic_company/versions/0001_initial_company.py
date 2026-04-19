@@ -35,117 +35,141 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 # ---------------------------------------------------------------------------
-# Trigger SQL. Inlined here rather than loaded from triggers.sql so the
-# migration is self-contained and survives source-tree reorganization.
+# Integrity triggers.
+#
+# Each trigger below is ONE SQL statement despite embedded ``;`` inside its
+# ``BEGIN ... END`` body - SQLite's parser correctly treats the BEGIN/END
+# block as a single compound statement. That means we can apply each one
+# via ``op.execute(sa.text(...))``, which keeps the DDL inside Alembic's
+# managed transaction.
+#
+# Earlier revisions of this migration used ``sqlite3.executescript()`` on
+# the raw DBAPI connection, which is seductive because it handles newline-
+# separated multi-statement SQL cheaply. It also issues an implicit
+# ``COMMIT`` before running, which splits the Alembic migration into two
+# transactions: tables/indexes committed early, the ``alembic_version``
+# stamp in a second transaction. A crash between them leaves the database
+# in a half-migrated state that requires a manual ``alembic stamp`` to
+# recover. Individual ``op.execute`` calls avoid that entirely.
 # ---------------------------------------------------------------------------
 
-TRIGGERS_SQL: str = """
-CREATE TRIGGER IF NOT EXISTS trg_journal_entries_balance_on_post
-BEFORE UPDATE OF status ON journal_entries
-FOR EACH ROW
-WHEN NEW.status = 'posted' AND OLD.status != 'posted'
-BEGIN
-    SELECT CASE
-        WHEN (
-            SELECT COUNT(*)
-            FROM journal_lines
-            WHERE journal_entry_id = NEW.id
-        ) < 2 THEN
-            RAISE(ABORT, 'journal entry must have at least two lines')
-    END;
-    SELECT CASE
-        WHEN (
-            SELECT COALESCE(SUM(debit_cents), 0) - COALESCE(SUM(credit_cents), 0)
-            FROM journal_lines
-            WHERE journal_entry_id = NEW.id
-        ) != 0 THEN
-            RAISE(ABORT, 'journal entry does not balance: debits != credits')
-    END;
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_journal_entries_immutable_posted
-BEFORE UPDATE ON journal_entries
-FOR EACH ROW
-WHEN OLD.status = 'posted'
-BEGIN
-    SELECT CASE
-        WHEN NEW.status NOT IN ('posted', 'void') THEN
-            RAISE(ABORT, 'posted journal entry cannot return to draft')
-        WHEN NEW.entry_date != OLD.entry_date
-          OR NEW.posting_date != OLD.posting_date
-          OR COALESCE(NEW.reference, '') != COALESCE(OLD.reference, '')
-          OR COALESCE(NEW.memo, '') != COALESCE(OLD.memo, '')
-          OR NEW.source_type != OLD.source_type
-          OR COALESCE(NEW.source_id, -1) != COALESCE(OLD.source_id, -1)
-          OR COALESCE(NEW.reversal_of_id, -1) != COALESCE(OLD.reversal_of_id, -1)
-        THEN
-            RAISE(ABORT, 'posted journal entry is immutable except status')
-    END;
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_journal_entries_no_delete_posted
-BEFORE DELETE ON journal_entries
-FOR EACH ROW
-WHEN OLD.status IN ('posted', 'void')
-BEGIN
-    SELECT RAISE(ABORT, 'posted or voided journal entries cannot be deleted');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_journal_lines_no_update_on_posted
-BEFORE UPDATE ON journal_lines
-FOR EACH ROW
-WHEN (
-    SELECT status FROM journal_entries
-    WHERE id = OLD.journal_entry_id
-) IN ('posted', 'void')
-BEGIN
-    SELECT RAISE(ABORT, 'cannot modify lines of a posted or voided entry');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_journal_lines_no_delete_on_posted
-BEFORE DELETE ON journal_lines
-FOR EACH ROW
-WHEN (
-    SELECT status FROM journal_entries
-    WHERE id = OLD.journal_entry_id
-) IN ('posted', 'void')
-BEGIN
-    SELECT RAISE(ABORT, 'cannot delete lines of a posted or voided entry');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_journal_lines_no_insert_on_posted
-BEFORE INSERT ON journal_lines
-FOR EACH ROW
-WHEN (
-    SELECT status FROM journal_entries
-    WHERE id = NEW.journal_entry_id
-) IN ('posted', 'void')
-BEGIN
-    SELECT RAISE(ABORT, 'cannot add lines to a posted or voided entry');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_accounts_no_delete_with_lines
-BEFORE DELETE ON accounts
-FOR EACH ROW
-WHEN EXISTS (
-    SELECT 1 FROM journal_lines WHERE account_id = OLD.id LIMIT 1
+TRIGGERS: tuple[str, ...] = (
+    """
+    CREATE TRIGGER IF NOT EXISTS trg_journal_entries_balance_on_post
+    BEFORE UPDATE OF status ON journal_entries
+    FOR EACH ROW
+    WHEN NEW.status = 'posted' AND OLD.status != 'posted'
+    BEGIN
+        SELECT CASE
+            WHEN (
+                SELECT COUNT(*)
+                FROM journal_lines
+                WHERE journal_entry_id = NEW.id
+            ) < 2 THEN
+                RAISE(ABORT, 'journal entry must have at least two lines')
+        END;
+        SELECT CASE
+            WHEN (
+                SELECT COALESCE(SUM(debit_cents), 0) - COALESCE(SUM(credit_cents), 0)
+                FROM journal_lines
+                WHERE journal_entry_id = NEW.id
+            ) != 0 THEN
+                RAISE(ABORT, 'journal entry does not balance: debits != credits')
+        END;
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS trg_journal_entries_immutable_posted
+    BEFORE UPDATE ON journal_entries
+    FOR EACH ROW
+    WHEN OLD.status = 'posted'
+    BEGIN
+        SELECT CASE
+            WHEN NEW.status NOT IN ('posted', 'void') THEN
+                RAISE(ABORT, 'posted journal entry cannot return to draft')
+            WHEN NEW.entry_date != OLD.entry_date
+              OR NEW.posting_date != OLD.posting_date
+              OR COALESCE(NEW.reference, '') != COALESCE(OLD.reference, '')
+              OR COALESCE(NEW.memo, '') != COALESCE(OLD.memo, '')
+              OR NEW.source_type != OLD.source_type
+              OR COALESCE(NEW.source_id, -1) != COALESCE(OLD.source_id, -1)
+              OR COALESCE(NEW.reversal_of_id, -1) != COALESCE(OLD.reversal_of_id, -1)
+            THEN
+                RAISE(ABORT, 'posted journal entry is immutable except status')
+        END;
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS trg_journal_entries_no_delete_posted
+    BEFORE DELETE ON journal_entries
+    FOR EACH ROW
+    WHEN OLD.status IN ('posted', 'void')
+    BEGIN
+        SELECT RAISE(ABORT, 'posted or voided journal entries cannot be deleted');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS trg_journal_lines_no_update_on_posted
+    BEFORE UPDATE ON journal_lines
+    FOR EACH ROW
+    WHEN (
+        SELECT status FROM journal_entries
+        WHERE id = OLD.journal_entry_id
+    ) IN ('posted', 'void')
+    BEGIN
+        SELECT RAISE(ABORT, 'cannot modify lines of a posted or voided entry');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS trg_journal_lines_no_delete_on_posted
+    BEFORE DELETE ON journal_lines
+    FOR EACH ROW
+    WHEN (
+        SELECT status FROM journal_entries
+        WHERE id = OLD.journal_entry_id
+    ) IN ('posted', 'void')
+    BEGIN
+        SELECT RAISE(ABORT, 'cannot delete lines of a posted or voided entry');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS trg_journal_lines_no_insert_on_posted
+    BEFORE INSERT ON journal_lines
+    FOR EACH ROW
+    WHEN (
+        SELECT status FROM journal_entries
+        WHERE id = NEW.journal_entry_id
+    ) IN ('posted', 'void')
+    BEGIN
+        SELECT RAISE(ABORT, 'cannot add lines to a posted or voided entry');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS trg_accounts_no_delete_with_lines
+    BEFORE DELETE ON accounts
+    FOR EACH ROW
+    WHEN EXISTS (
+        SELECT 1 FROM journal_lines WHERE account_id = OLD.id LIMIT 1
+    )
+    BEGIN
+        SELECT RAISE(ABORT, 'cannot delete an account referenced by journal lines');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS trg_audit_log_no_update
+    BEFORE UPDATE ON audit_log
+    BEGIN
+        SELECT RAISE(ABORT, 'audit_log rows are immutable');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS trg_audit_log_no_delete
+    BEFORE DELETE ON audit_log
+    BEGIN
+        SELECT RAISE(ABORT, 'audit_log rows are append-only; deletion forbidden');
+    END
+    """,
 )
-BEGIN
-    SELECT RAISE(ABORT, 'cannot delete an account referenced by journal lines');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_audit_log_no_update
-BEFORE UPDATE ON audit_log
-BEGIN
-    SELECT RAISE(ABORT, 'audit_log rows are immutable');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_audit_log_no_delete
-BEFORE DELETE ON audit_log
-BEGIN
-    SELECT RAISE(ABORT, 'audit_log rows are append-only; deletion forbidden');
-END;
-""".strip()
 
 
 TRIGGER_NAMES: list[str] = [
@@ -162,19 +186,16 @@ TRIGGER_NAMES: list[str] = [
 
 
 def _apply_triggers() -> None:
-    """Execute the trigger SQL block via the raw DBAPI.
+    """Create every integrity trigger via Alembic's managed connection.
 
-    Alembic's ``op.execute`` runs through SQLAlchemy which doesn't handle
-    SQLite's multi-statement CREATE TRIGGER blocks cleanly. SQLite's
-    ``executescript`` does.
+    Each entry in ``TRIGGERS`` is a single SQL statement (the embedded ``;``
+    characters live inside BEGIN/END blocks, which SQLite parses as one
+    compound statement). ``op.execute(sa.text(stmt))`` therefore runs each
+    trigger through SQLAlchemy within the migration's transaction, keeping
+    the whole migration atomic.
     """
-    bind = op.get_bind()
-    raw = bind.connection.driver_connection  # underlying sqlite3.Connection
-    cursor = raw.cursor()
-    try:
-        cursor.executescript(TRIGGERS_SQL)
-    finally:
-        cursor.close()
+    for trigger_sql in TRIGGERS:
+        op.execute(sa.text(trigger_sql.strip()))
 
 
 def upgrade() -> None:
