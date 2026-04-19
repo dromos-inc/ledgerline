@@ -27,7 +27,9 @@ from app.reports.profit_loss import build_profit_loss
 from app.reports.trial_balance import build_trial_balance
 from app.services import account as account_service
 from app.services import customer as customer_service
+from app.services import invoice as invoice_service
 from app.services import journal as journal_service
+from app.services import payment as payment_service
 from app.services import register as register_service
 
 router = APIRouter(
@@ -111,6 +113,108 @@ def customers_csv(
         for c in customers
     ]
     return _csv_response(to_csv(header, rows), "customers.csv")
+
+
+@router.get("/invoices.csv")
+def invoices_csv(
+    customer_id: Optional[int] = Query(default=None),
+    status_filter: Optional[str] = Query(default=None, alias="status"),
+    start_date: Optional[date] = Query(default=None),
+    end_date: Optional[date] = Query(default=None),
+    session: Session = Depends(get_company_session),
+) -> Response:
+    invoices, _total = invoice_service.list_invoices(
+        session,
+        customer_id=customer_id,
+        status_filter=status_filter,
+        start_date=start_date,
+        end_date=end_date,
+        limit=10000,
+    )
+    header = [
+        "number",
+        "customer_id",
+        "invoice_date",
+        "due_date",
+        "terms",
+        "status",
+        "subtotal",
+        "tax_total",
+        "total",
+        "amount_paid",
+        "balance",
+        "journal_entry_id",
+        "reference",
+        "memo",
+    ]
+    rows = [
+        (
+            inv.number,
+            inv.customer_id,
+            inv.invoice_date.isoformat(),
+            inv.due_date.isoformat(),
+            inv.terms,
+            inv.status,
+            cents_to_dollars(inv.subtotal_cents),
+            cents_to_dollars(inv.tax_total_cents),
+            cents_to_dollars(inv.total_cents),
+            cents_to_dollars(inv.amount_paid_cents),
+            cents_to_dollars(inv.balance_cents),
+            inv.journal_entry_id if inv.journal_entry_id is not None else "",
+            inv.reference or "",
+            inv.memo or "",
+        )
+        for inv in invoices
+    ]
+    return _csv_response(to_csv(header, rows), "invoices.csv")
+
+
+@router.get("/payments.csv")
+def payments_csv(
+    customer_id: Optional[int] = Query(default=None),
+    start_date: Optional[date] = Query(default=None),
+    end_date: Optional[date] = Query(default=None),
+    session: Session = Depends(get_company_session),
+) -> Response:
+    payments, _total = payment_service.list_payments(
+        session,
+        customer_id=customer_id,
+        start_date=start_date,
+        end_date=end_date,
+        limit=10000,
+    )
+    header = [
+        "id",
+        "customer_id",
+        "payment_date",
+        "amount",
+        "applied",
+        "unapplied",
+        "deposit_account_id",
+        "method",
+        "reference",
+        "status",
+        "journal_entry_id",
+        "memo",
+    ]
+    rows = [
+        (
+            p.id,
+            p.customer_id,
+            p.payment_date.isoformat(),
+            cents_to_dollars(p.amount_cents),
+            cents_to_dollars(p.applied_cents),
+            cents_to_dollars(p.unapplied_cents),
+            p.deposit_account_id,
+            p.method or "",
+            p.reference or "",
+            p.status,
+            p.journal_entry_id,
+            p.memo or "",
+        )
+        for p in payments
+    ]
+    return _csv_response(to_csv(header, rows), "payments.csv")
 
 
 @router.get("/journal-entries.csv")

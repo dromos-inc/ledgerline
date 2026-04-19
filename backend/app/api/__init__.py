@@ -15,7 +15,9 @@ from app.api import (
     customers,
     export,
     import_api,
+    invoices,
     journal,
+    payments,
     register,
     reports,
 )
@@ -27,6 +29,8 @@ def register_routers(app: FastAPI, *, prefix: str) -> None:
     api.include_router(companies.router)
     api.include_router(accounts.router)
     api.include_router(customers.router)
+    api.include_router(invoices.router)
+    api.include_router(payments.router)
     api.include_router(journal.router)
     api.include_router(register.router)
     api.include_router(reports.router)
