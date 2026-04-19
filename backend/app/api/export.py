@@ -247,7 +247,7 @@ def balance_sheet_csv(
         (
             "",
             "",
-            "Difference (A − L − E)",
+            "Difference (A - L - E)",
             cents_to_dollars(bs.equation_difference_cents),
         )
     )
