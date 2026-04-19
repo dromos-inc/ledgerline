@@ -26,6 +26,7 @@ from app.reports.basis import Basis
 from app.reports.profit_loss import build_profit_loss
 from app.reports.trial_balance import build_trial_balance
 from app.services import account as account_service
+from app.services import customer as customer_service
 from app.services import journal as journal_service
 from app.services import register as register_service
 
@@ -65,6 +66,51 @@ def accounts_csv(
         for a in accounts
     ]
     return _csv_response(to_csv(header, rows), "accounts.csv")
+
+
+@router.get("/customers.csv")
+def customers_csv(
+    include_inactive: bool = Query(default=False),
+    q: Optional[str] = Query(default=None),
+    session: Session = Depends(get_company_session),
+) -> Response:
+    customers = customer_service.list_customers(
+        session, include_inactive=include_inactive, query=q
+    )
+    header = [
+        "code",
+        "name",
+        "company",
+        "email",
+        "phone",
+        "tax_id",
+        "billing_address",
+        "shipping_address",
+        "default_terms",
+        "default_income_account_id",
+        "default_tax_code_id",
+        "is_active",
+        "notes",
+    ]
+    rows = [
+        (
+            c.code,
+            c.name,
+            c.company or "",
+            c.email or "",
+            c.phone or "",
+            c.tax_id or "",
+            c.billing_address or "",
+            c.shipping_address or "",
+            c.default_terms,
+            c.default_income_account_id if c.default_income_account_id is not None else "",
+            c.default_tax_code_id if c.default_tax_code_id is not None else "",
+            "true" if c.is_active else "false",
+            c.notes or "",
+        )
+        for c in customers
+    ]
+    return _csv_response(to_csv(header, rows), "customers.csv")
 
 
 @router.get("/journal-entries.csv")
