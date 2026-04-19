@@ -100,6 +100,17 @@ class Account(CompanyBase):
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     description: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    role: Mapped[Optional[str]] = mapped_column(
+        String(32),
+        nullable=True,
+        doc=(
+            "Reserved control-account marker: 'ar_control', 'ap_control', "
+            "or 'sales_tax_default'. NULL for ordinary accounts. A partial "
+            "unique index in migration 0002 guarantees at most one account "
+            "carries each role. Used by triggers that block direct manual "
+            "posting to control accounts."
+        ),
+    )
 
     parent: Mapped[Optional[Account]] = relationship(
         "Account",
