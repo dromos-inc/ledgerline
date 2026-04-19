@@ -21,6 +21,7 @@ from app.db.session import (
 from app.export.csv import cents_to_dollars, to_csv
 from app.export.json_dump import dump_company
 from app.models.registry import Company
+from app.reports.ar_aging import build_ar_aging
 from app.reports.balance_sheet import build_balance_sheet
 from app.reports.basis import Basis
 from app.reports.profit_loss import build_profit_loss
@@ -402,3 +403,50 @@ def balance_sheet_csv(
         )
     )
     return _csv_response(to_csv(header, rows), f"balance-sheet-{as_of_date}.csv")
+
+
+@router.get("/reports/ar-aging.csv")
+def ar_aging_csv(
+    as_of_date: date = Query(...),
+    include_zero_balance: bool = Query(default=False),
+    session: Session = Depends(get_company_session),
+) -> Response:
+    report = build_ar_aging(
+        session, as_of_date=as_of_date, include_zero_balance=include_zero_balance
+    )
+    header = [
+        "customer_code",
+        "customer_name",
+        "current",
+        "1_30",
+        "31_60",
+        "61_90",
+        "over_90",
+        "total",
+    ]
+    rows = [
+        (
+            row.customer_code,
+            row.customer_name,
+            cents_to_dollars(row.current_cents),
+            cents_to_dollars(row.d1_30_cents),
+            cents_to_dollars(row.d31_60_cents),
+            cents_to_dollars(row.d61_90_cents),
+            cents_to_dollars(row.over_90_cents),
+            cents_to_dollars(row.total_cents),
+        )
+        for row in report.rows
+    ]
+    rows.append(
+        (
+            "",
+            "TOTAL",
+            cents_to_dollars(report.total_current_cents),
+            cents_to_dollars(report.total_d1_30_cents),
+            cents_to_dollars(report.total_d31_60_cents),
+            cents_to_dollars(report.total_d61_90_cents),
+            cents_to_dollars(report.total_over_90_cents),
+            cents_to_dollars(report.total_cents),
+        )
+    )
+    return _csv_response(to_csv(header, rows), f"ar-aging-{as_of_date}.csv")
