@@ -4,9 +4,15 @@ import { api } from "./client";
 import type {
   Account,
   AccountCreate,
+  ApAgingReport,
   ArAgingReport,
   BalanceSheetReport,
   Basis,
+  Bill,
+  BillCreate,
+  BillPayment,
+  BillPaymentCreate,
+  BillStatus,
   Company,
   CompanyCreate,
   Customer,
@@ -24,6 +30,8 @@ import type {
   Register,
   TemplateInfo,
   TrialBalanceReport,
+  Vendor,
+  VendorCreate,
 } from "./types";
 
 // --- Companies -------------------------------------------------------------
@@ -133,6 +141,11 @@ export const reports = (companyId: string) => ({
       as_of_date: asOfDate,
       include_zero_balance: includeZeroBalance,
     }),
+  apAging: (asOfDate: string, includeZeroBalance = false) =>
+    api.get<ApAgingReport>(`/companies/${companyId}/reports/ap-aging`, {
+      as_of_date: asOfDate,
+      include_zero_balance: includeZeroBalance,
+    }),
   reconciliation: (asOfDate: string) =>
     api.get<ReconciliationReport>(
       `/companies/${companyId}/reports/sub-ledger-reconciliation`,
@@ -213,4 +226,80 @@ export const payments = (companyId: string) => ({
     api.post<Payment>(`/companies/${companyId}/payments`, payload),
   voidPayment: (pid: number) =>
     api.post<Payment>(`/companies/${companyId}/payments/${pid}/void`),
+});
+
+// --- Vendors ---------------------------------------------------------------
+
+export const vendors = (companyId: string) => ({
+  list: (includeInactive = false, query?: string) =>
+    api.get<Vendor[]>(`/companies/${companyId}/vendors`, {
+      include_inactive: includeInactive,
+      q: query,
+    }),
+  get: (vid: number) =>
+    api.get<Vendor>(`/companies/${companyId}/vendors/${vid}`),
+  create: (payload: VendorCreate) =>
+    api.post<Vendor>(`/companies/${companyId}/vendors`, payload),
+  update: (vid: number, payload: Partial<VendorCreate>) =>
+    api.patch<Vendor>(`/companies/${companyId}/vendors/${vid}`, payload),
+  deactivate: (vid: number) =>
+    api.post<Vendor>(`/companies/${companyId}/vendors/${vid}/deactivate`),
+  reactivate: (vid: number) =>
+    api.post<Vendor>(`/companies/${companyId}/vendors/${vid}/reactivate`),
+});
+
+// --- Bills -----------------------------------------------------------------
+
+export interface BillListQuery {
+  vendor_id?: number;
+  status?: BillStatus;
+  start_date?: string;
+  end_date?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export const bills = (companyId: string) => ({
+  list: (query?: BillListQuery) =>
+    api.get<Bill[]>(
+      `/companies/${companyId}/bills`,
+      query as Record<string, string | number | undefined>,
+    ),
+  get: (bid: number) => api.get<Bill>(`/companies/${companyId}/bills/${bid}`),
+  create: (payload: BillCreate) =>
+    api.post<Bill>(`/companies/${companyId}/bills`, payload),
+  update: (bid: number, payload: Partial<BillCreate>) =>
+    api.patch<Bill>(`/companies/${companyId}/bills/${bid}`, payload),
+  post: (bid: number) =>
+    api.post<Bill>(`/companies/${companyId}/bills/${bid}/post`),
+  voidBill: (bid: number) =>
+    api.post<Bill>(`/companies/${companyId}/bills/${bid}/void`),
+  delete: (bid: number) =>
+    api.delete<void>(`/companies/${companyId}/bills/${bid}`),
+});
+
+// --- Bill payments ---------------------------------------------------------
+
+export interface BillPaymentListQuery {
+  vendor_id?: number;
+  start_date?: string;
+  end_date?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export const billPayments = (companyId: string) => ({
+  list: (query?: BillPaymentListQuery) =>
+    api.get<BillPayment[]>(
+      `/companies/${companyId}/bill-payments`,
+      query as Record<string, string | number | undefined>,
+    ),
+  get: (pid: number) =>
+    api.get<BillPayment>(`/companies/${companyId}/bill-payments/${pid}`),
+  create: (payload: BillPaymentCreate) =>
+    api.post<BillPayment>(`/companies/${companyId}/bill-payments`, payload),
+  voidPayment: (pid: number) =>
+    api.post<BillPayment>(
+      `/companies/${companyId}/bill-payments/${pid}/void`,
+    ),
 });

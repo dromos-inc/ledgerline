@@ -22,6 +22,8 @@ export type Basis = "cash" | "accrual";
 
 export type InvoiceStatus = "draft" | "sent" | "partial" | "paid" | "void";
 
+export type BillStatus = "draft" | "open" | "partial" | "paid" | "void";
+
 export type PaymentStatus = "posted" | "void";
 
 export type PaymentMethod = "check" | "ach" | "card" | "wire" | "cash" | "other";
@@ -403,4 +405,176 @@ export interface ReconciliationReport {
   ar_sub_ledger_cents: number;
   ar_unapplied_credits_cents: number;
   ar_difference_cents: number;
+  ap_control_account_id: number | null;
+  ap_control_account_code: string | null;
+  ap_control_balance_cents: number;
+  ap_sub_ledger_cents: number;
+  ap_unapplied_credits_cents: number;
+  ap_difference_cents: number;
+}
+
+// --- Vendors --------------------------------------------------------------
+
+export interface Vendor {
+  id: number;
+  code: string;
+  name: string;
+  company: string | null;
+  email: string | null;
+  phone: string | null;
+  tax_id: string | null;
+  billing_address: string | null;
+  default_terms: Terms;
+  default_expense_account_id: number | null;
+  is_active: boolean;
+  is_1099: boolean;
+  notes: string | null;
+}
+
+export interface VendorCreate {
+  code: string;
+  name: string;
+  company?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  tax_id?: string | null;
+  billing_address?: string | null;
+  default_terms?: Terms;
+  default_expense_account_id?: number | null;
+  is_1099?: boolean;
+  notes?: string | null;
+}
+
+// --- Bills ----------------------------------------------------------------
+
+export interface BillLine {
+  id: number;
+  line_number: number;
+  item_id: number | null;
+  account_id: number;
+  description: string | null;
+  quantity_milli: number;
+  unit_price_cents: number;
+  tax_code_id: number | null;
+  tax_amount_cents: number;
+  amount_cents: number;
+}
+
+export interface BillLineCreate {
+  item_id?: number | null;
+  account_id?: number | null;
+  description?: string | null;
+  quantity_milli: number;
+  unit_price_cents: number;
+  tax_code_id?: number | null;
+}
+
+export interface Bill {
+  id: number;
+  number: string;
+  vendor_id: number;
+  bill_date: string;
+  due_date: string;
+  terms: Terms;
+  reference: string | null;
+  memo: string | null;
+  subtotal_cents: number;
+  tax_total_cents: number;
+  total_cents: number;
+  amount_paid_cents: number;
+  balance_cents: number;
+  status: BillStatus;
+  journal_entry_id: number | null;
+  approved_at: string | null;
+  approved_by: string | null;
+  lines: BillLine[];
+}
+
+export interface BillCreate {
+  number: string;
+  vendor_id: number;
+  bill_date: string;
+  due_date: string;
+  terms?: Terms;
+  reference?: string | null;
+  memo?: string | null;
+  lines: BillLineCreate[];
+}
+
+// --- Bill payments --------------------------------------------------------
+
+export interface BillPaymentApplication {
+  id: number;
+  bill_payment_id: number;
+  bill_id: number;
+  amount_cents: number;
+  discount_cents: number;
+  writeoff_cents: number;
+}
+
+export interface BillPaymentApplicationCreate {
+  bill_id: number;
+  amount_cents: number;
+  discount_cents?: number;
+  writeoff_cents?: number;
+}
+
+export interface BillPayment {
+  id: number;
+  vendor_id: number;
+  payment_date: string;
+  amount_cents: number;
+  payout_account_id: number;
+  method: PaymentMethod | null;
+  reference: string | null;
+  memo: string | null;
+  journal_entry_id: number;
+  status: PaymentStatus;
+  applied_cents: number;
+  unapplied_cents: number;
+  applications: BillPaymentApplication[];
+}
+
+export interface BillPaymentCreate {
+  vendor_id: number;
+  payment_date: string;
+  amount_cents: number;
+  payout_account_id: number;
+  method?: PaymentMethod | null;
+  reference?: string | null;
+  memo?: string | null;
+  applications?: BillPaymentApplicationCreate[];
+}
+
+// --- AP aging -------------------------------------------------------------
+
+export interface AgingBillDetail {
+  bill_id: number;
+  number: string;
+  bill_date: string;
+  due_date: string;
+  days_overdue: number;
+  bucket: string;
+  balance_cents: number;
+  total_cents: number;
+  amount_paid_cents: number;
+}
+
+export interface ApAgingRow {
+  vendor_id: number;
+  vendor_code: string;
+  vendor_name: string;
+  current_cents: number;
+  d1_30_cents: number;
+  d31_60_cents: number;
+  d61_90_cents: number;
+  over_90_cents: number;
+  total_cents: number;
+  bills: AgingBillDetail[];
+}
+
+export interface ApAgingReport {
+  as_of_date: string;
+  rows: ApAgingRow[];
+  totals: AgingTotals;
 }

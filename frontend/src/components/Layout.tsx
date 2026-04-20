@@ -5,6 +5,9 @@ type View =
   | "customers"
   | "invoices"
   | "ar_aging"
+  | "vendors"
+  | "bills"
+  | "ap_aging"
   | "journal"
   | "register"
   | "reports";
@@ -22,6 +25,9 @@ const NAV: { key: View; label: string }[] = [
   { key: "customers", label: "Customers" },
   { key: "invoices", label: "Invoices" },
   { key: "ar_aging", label: "AR aging" },
+  { key: "vendors", label: "Vendors" },
+  { key: "bills", label: "Bills" },
+  { key: "ap_aging", label: "AP aging" },
   { key: "journal", label: "Journal" },
   { key: "register", label: "Register" },
   { key: "reports", label: "Reports" },
@@ -57,7 +63,7 @@ export function Layout({
             )}
           </div>
           {companyId && (
-            <nav className="flex items-center gap-5 text-sm">
+            <nav className="flex flex-wrap items-center gap-4 text-sm">
               {NAV.map((item) => (
                 <button
                   key={item.key}
