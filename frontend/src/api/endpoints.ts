@@ -4,14 +4,23 @@ import { api } from "./client";
 import type {
   Account,
   AccountCreate,
+  ArAgingReport,
   BalanceSheetReport,
   Basis,
   Company,
   CompanyCreate,
+  Customer,
+  CustomerCreate,
+  Invoice,
+  InvoiceCreate,
+  InvoiceStatus,
   JournalEntry,
   JournalEntryCreate,
   JournalEntryList,
+  Payment,
+  PaymentCreate,
   ProfitLossReport,
+  ReconciliationReport,
   Register,
   TemplateInfo,
   TrialBalanceReport,
@@ -119,4 +128,89 @@ export const reports = (companyId: string) => ({
       `/companies/${companyId}/reports/balance-sheet`,
       { as_of_date: asOfDate, basis },
     ),
+  arAging: (asOfDate: string, includeZeroBalance = false) =>
+    api.get<ArAgingReport>(`/companies/${companyId}/reports/ar-aging`, {
+      as_of_date: asOfDate,
+      include_zero_balance: includeZeroBalance,
+    }),
+  reconciliation: (asOfDate: string) =>
+    api.get<ReconciliationReport>(
+      `/companies/${companyId}/reports/sub-ledger-reconciliation`,
+      { as_of_date: asOfDate },
+    ),
+});
+
+// --- Customers -------------------------------------------------------------
+
+export const customers = (companyId: string) => ({
+  list: (includeInactive = false, query?: string) =>
+    api.get<Customer[]>(`/companies/${companyId}/customers`, {
+      include_inactive: includeInactive,
+      q: query,
+    }),
+  get: (cid: number) =>
+    api.get<Customer>(`/companies/${companyId}/customers/${cid}`),
+  create: (payload: CustomerCreate) =>
+    api.post<Customer>(`/companies/${companyId}/customers`, payload),
+  update: (cid: number, payload: Partial<CustomerCreate>) =>
+    api.patch<Customer>(`/companies/${companyId}/customers/${cid}`, payload),
+  deactivate: (cid: number) =>
+    api.post<Customer>(`/companies/${companyId}/customers/${cid}/deactivate`),
+  reactivate: (cid: number) =>
+    api.post<Customer>(`/companies/${companyId}/customers/${cid}/reactivate`),
+});
+
+// --- Invoices --------------------------------------------------------------
+
+export interface InvoiceListQuery {
+  customer_id?: number;
+  status?: InvoiceStatus;
+  start_date?: string;
+  end_date?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export const invoices = (companyId: string) => ({
+  list: (query?: InvoiceListQuery) =>
+    api.get<Invoice[]>(
+      `/companies/${companyId}/invoices`,
+      query as Record<string, string | number | undefined>,
+    ),
+  get: (iid: number) =>
+    api.get<Invoice>(`/companies/${companyId}/invoices/${iid}`),
+  create: (payload: InvoiceCreate) =>
+    api.post<Invoice>(`/companies/${companyId}/invoices`, payload),
+  update: (iid: number, payload: Partial<InvoiceCreate>) =>
+    api.patch<Invoice>(`/companies/${companyId}/invoices/${iid}`, payload),
+  post: (iid: number) =>
+    api.post<Invoice>(`/companies/${companyId}/invoices/${iid}/post`),
+  voidInvoice: (iid: number) =>
+    api.post<Invoice>(`/companies/${companyId}/invoices/${iid}/void`),
+  delete: (iid: number) =>
+    api.delete<void>(`/companies/${companyId}/invoices/${iid}`),
+});
+
+// --- Payments --------------------------------------------------------------
+
+export interface PaymentListQuery {
+  customer_id?: number;
+  start_date?: string;
+  end_date?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export const payments = (companyId: string) => ({
+  list: (query?: PaymentListQuery) =>
+    api.get<Payment[]>(
+      `/companies/${companyId}/payments`,
+      query as Record<string, string | number | undefined>,
+    ),
+  get: (pid: number) =>
+    api.get<Payment>(`/companies/${companyId}/payments/${pid}`),
+  create: (payload: PaymentCreate) =>
+    api.post<Payment>(`/companies/${companyId}/payments`, payload),
+  voidPayment: (pid: number) =>
+    api.post<Payment>(`/companies/${companyId}/payments/${pid}/void`),
 });
