@@ -1,6 +1,13 @@
 import type { ReactNode } from "react";
 
-type View = "accounts" | "journal" | "register" | "reports";
+type View =
+  | "accounts"
+  | "customers"
+  | "invoices"
+  | "ar_aging"
+  | "journal"
+  | "register"
+  | "reports";
 
 interface Props {
   children: ReactNode;
@@ -12,6 +19,9 @@ interface Props {
 
 const NAV: { key: View; label: string }[] = [
   { key: "accounts", label: "Accounts" },
+  { key: "customers", label: "Customers" },
+  { key: "invoices", label: "Invoices" },
+  { key: "ar_aging", label: "AR aging" },
   { key: "journal", label: "Journal" },
   { key: "register", label: "Register" },
   { key: "reports", label: "Reports" },

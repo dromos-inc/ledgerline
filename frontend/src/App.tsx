@@ -3,12 +3,22 @@ import { Layout } from "./components/Layout";
 import { useSelectedCompany } from "./hooks/useSelectedCompany";
 import { ShortcutHelp, useShortcut } from "./shortcuts";
 import { Accounts } from "./views/Accounts";
+import { ArAging } from "./views/ArAging";
 import { CompanyPicker } from "./views/CompanyPicker";
+import { Customers } from "./views/Customers";
+import { Invoices } from "./views/Invoices";
 import { JournalEntries } from "./views/JournalEntries";
 import { Register } from "./views/Register";
 import { Reports } from "./views/Reports";
 
-type View = "accounts" | "journal" | "register" | "reports";
+type View =
+  | "accounts"
+  | "customers"
+  | "invoices"
+  | "ar_aging"
+  | "journal"
+  | "register"
+  | "reports";
 
 export function App() {
   const [companyId, setCompanyId] = useSelectedCompany();
@@ -17,8 +27,11 @@ export function App() {
   const clearCompany = useCallback(() => setCompanyId(null), [setCompanyId]);
   const hasCompany = companyId != null;
 
-  // Top-level navigation shortcuts (Ctrl+1..4) when a company is open.
+  // Top-level navigation shortcuts when a company is open.
   const gotoAccounts = useCallback(() => setView("accounts"), []);
+  const gotoCustomers = useCallback(() => setView("customers"), []);
+  const gotoInvoices = useCallback(() => setView("invoices"), []);
+  const gotoAging = useCallback(() => setView("ar_aging"), []);
   const gotoJournal = useCallback(() => setView("journal"), []);
   const gotoRegister = useCallback(() => setView("register"), []);
   const gotoReports = useCallback(() => setView("reports"), []);
@@ -35,6 +48,33 @@ export function App() {
   useShortcut(
     {
       id: "ctrl+2",
+      description: "Go to Customers",
+      group: "Navigation",
+      when: () => hasCompany,
+    },
+    gotoCustomers,
+  );
+  useShortcut(
+    {
+      id: "ctrl+3",
+      description: "Go to Invoices",
+      group: "Navigation",
+      when: () => hasCompany,
+    },
+    gotoInvoices,
+  );
+  useShortcut(
+    {
+      id: "ctrl+4",
+      description: "Go to AR aging",
+      group: "Navigation",
+      when: () => hasCompany,
+    },
+    gotoAging,
+  );
+  useShortcut(
+    {
+      id: "ctrl+5",
       description: "Go to Journal",
       group: "Navigation",
       when: () => hasCompany,
@@ -43,7 +83,7 @@ export function App() {
   );
   useShortcut(
     {
-      id: "ctrl+3",
+      id: "ctrl+6",
       description: "Go to Register",
       group: "Navigation",
       when: () => hasCompany,
@@ -52,7 +92,7 @@ export function App() {
   );
   useShortcut(
     {
-      id: "ctrl+4",
+      id: "ctrl+7",
       description: "Go to Reports",
       group: "Navigation",
       when: () => hasCompany,
@@ -91,6 +131,9 @@ export function App() {
       onSwitchCompany={clearCompany}
     >
       {view === "accounts" && <Accounts companyId={companyId} />}
+      {view === "customers" && <Customers companyId={companyId} />}
+      {view === "invoices" && <Invoices companyId={companyId} />}
+      {view === "ar_aging" && <ArAging companyId={companyId} />}
       {view === "journal" && <JournalEntries companyId={companyId} />}
       {view === "register" && <Register companyId={companyId} />}
       {view === "reports" && <Reports companyId={companyId} />}

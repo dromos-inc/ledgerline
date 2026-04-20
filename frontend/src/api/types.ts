@@ -16,9 +16,17 @@ export type TaxBasis = "cash" | "accrual";
 
 export type JournalStatus = "draft" | "posted" | "void";
 
-export type JournalSource = "manual" | "reversal";
+export type JournalSource = "manual" | "reversal" | "invoice" | "payment";
 
 export type Basis = "cash" | "accrual";
+
+export type InvoiceStatus = "draft" | "sent" | "partial" | "paid" | "void";
+
+export type PaymentStatus = "posted" | "void";
+
+export type PaymentMethod = "check" | "ach" | "card" | "wire" | "cash" | "other";
+
+export type Terms = "net_15" | "net_30" | "net_60" | "due_on_receipt" | "custom";
 
 // --- Companies -------------------------------------------------------------
 
@@ -70,6 +78,140 @@ export interface AccountCreate {
   subtype?: string | null;
   parent_id?: number | null;
   description?: string | null;
+}
+
+// --- Customers -------------------------------------------------------------
+
+export interface Customer {
+  id: number;
+  code: string;
+  name: string;
+  company: string | null;
+  email: string | null;
+  phone: string | null;
+  tax_id: string | null;
+  billing_address: string | null;
+  shipping_address: string | null;
+  default_terms: Terms;
+  default_income_account_id: number | null;
+  default_tax_code_id: number | null;
+  is_active: boolean;
+  notes: string | null;
+}
+
+export interface CustomerCreate {
+  code: string;
+  name: string;
+  company?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  tax_id?: string | null;
+  billing_address?: string | null;
+  shipping_address?: string | null;
+  default_terms?: Terms;
+  default_income_account_id?: number | null;
+  default_tax_code_id?: number | null;
+  notes?: string | null;
+}
+
+// --- Invoices --------------------------------------------------------------
+
+export interface InvoiceLine {
+  id: number;
+  line_number: number;
+  item_id: number | null;
+  account_id: number;
+  description: string | null;
+  quantity_milli: number;
+  unit_price_cents: number;
+  tax_code_id: number | null;
+  tax_amount_cents: number;
+  amount_cents: number;
+}
+
+export interface InvoiceLineCreate {
+  item_id?: number | null;
+  account_id?: number | null;
+  description?: string | null;
+  quantity_milli: number;
+  unit_price_cents: number;
+  tax_code_id?: number | null;
+}
+
+export interface Invoice {
+  id: number;
+  number: string;
+  customer_id: number;
+  invoice_date: string;
+  due_date: string;
+  terms: Terms;
+  reference: string | null;
+  memo: string | null;
+  subtotal_cents: number;
+  tax_total_cents: number;
+  total_cents: number;
+  amount_paid_cents: number;
+  balance_cents: number;
+  status: InvoiceStatus;
+  journal_entry_id: number | null;
+  sent_at: string | null;
+  lines: InvoiceLine[];
+}
+
+export interface InvoiceCreate {
+  number: string;
+  customer_id: number;
+  invoice_date: string;
+  due_date: string;
+  terms?: Terms;
+  reference?: string | null;
+  memo?: string | null;
+  lines: InvoiceLineCreate[];
+}
+
+// --- Payments --------------------------------------------------------------
+
+export interface PaymentApplication {
+  id: number;
+  payment_id: number;
+  invoice_id: number;
+  amount_cents: number;
+  discount_cents: number;
+  writeoff_cents: number;
+}
+
+export interface PaymentApplicationCreate {
+  invoice_id: number;
+  amount_cents: number;
+  discount_cents?: number;
+  writeoff_cents?: number;
+}
+
+export interface Payment {
+  id: number;
+  customer_id: number;
+  payment_date: string;
+  amount_cents: number;
+  deposit_account_id: number;
+  method: PaymentMethod | null;
+  reference: string | null;
+  memo: string | null;
+  journal_entry_id: number;
+  status: PaymentStatus;
+  applied_cents: number;
+  unapplied_cents: number;
+  applications: PaymentApplication[];
+}
+
+export interface PaymentCreate {
+  customer_id: number;
+  payment_date: string;
+  amount_cents: number;
+  deposit_account_id: number;
+  method?: PaymentMethod | null;
+  reference?: string | null;
+  memo?: string | null;
+  applications?: PaymentApplicationCreate[];
 }
 
 // --- Journal entries -------------------------------------------------------
@@ -209,4 +351,56 @@ export interface BalanceSheetReport {
   equity: BSSection;
   equation_difference_cents: number;
   balanced: boolean;
+}
+
+// --- AR aging --------------------------------------------------------------
+
+export interface AgingInvoiceDetail {
+  invoice_id: number;
+  number: string;
+  invoice_date: string;
+  due_date: string;
+  days_overdue: number;
+  bucket: string;
+  balance_cents: number;
+  total_cents: number;
+  amount_paid_cents: number;
+}
+
+export interface AgingRow {
+  customer_id: number;
+  customer_code: string;
+  customer_name: string;
+  current_cents: number;
+  d1_30_cents: number;
+  d31_60_cents: number;
+  d61_90_cents: number;
+  over_90_cents: number;
+  total_cents: number;
+  invoices: AgingInvoiceDetail[];
+}
+
+export interface AgingTotals {
+  current_cents: number;
+  d1_30_cents: number;
+  d31_60_cents: number;
+  d61_90_cents: number;
+  over_90_cents: number;
+  total_cents: number;
+}
+
+export interface ArAgingReport {
+  as_of_date: string;
+  rows: AgingRow[];
+  totals: AgingTotals;
+}
+
+export interface ReconciliationReport {
+  as_of_date: string;
+  ar_control_account_id: number | null;
+  ar_control_account_code: string | null;
+  ar_control_balance_cents: number;
+  ar_sub_ledger_cents: number;
+  ar_unapplied_credits_cents: number;
+  ar_difference_cents: number;
 }
