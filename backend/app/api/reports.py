@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_company_session
+from app.reports.ap_aging import build_ap_aging
 from app.reports.ar_aging import build_ar_aging
 from app.reports.balance_sheet import build_balance_sheet
 from app.reports.basis import Basis
@@ -108,6 +109,49 @@ def ar_aging(
     }
 
 
+@router.get("/ap-aging")
+def ap_aging(
+    as_of_date: date = Query(..., description="Inclusive as-of date."),
+    include_zero_balance: bool = Query(default=False),
+    session: Session = Depends(get_company_session),
+) -> dict[str, Any]:
+    """AP aging buckets by vendor.
+
+    Buckets: current (not yet due), 1-30, 31-60, 61-90, 90+ days
+    overdue. Voided and paid bills are excluded; draft bills don't
+    count either (no JE has fired).
+    """
+    report = build_ap_aging(
+        session, as_of_date=as_of_date, include_zero_balance=include_zero_balance
+    )
+    return {
+        "as_of_date": report.as_of_date.isoformat(),
+        "rows": [
+            {
+                "vendor_id": row.vendor_id,
+                "vendor_code": row.vendor_code,
+                "vendor_name": row.vendor_name,
+                "current_cents": row.current_cents,
+                "d1_30_cents": row.d1_30_cents,
+                "d31_60_cents": row.d31_60_cents,
+                "d61_90_cents": row.d61_90_cents,
+                "over_90_cents": row.over_90_cents,
+                "total_cents": row.total_cents,
+                "bills": row.bills,
+            }
+            for row in report.rows
+        ],
+        "totals": {
+            "current_cents": report.total_current_cents,
+            "d1_30_cents": report.total_d1_30_cents,
+            "d31_60_cents": report.total_d31_60_cents,
+            "d61_90_cents": report.total_d61_90_cents,
+            "over_90_cents": report.total_over_90_cents,
+            "total_cents": report.total_cents,
+        },
+    }
+
+
 @router.get("/sub-ledger-reconciliation")
 def sub_ledger_reconciliation(
     as_of_date: date = Query(..., description="Inclusive as-of date."),
@@ -115,17 +159,25 @@ def sub_ledger_reconciliation(
 ) -> dict[str, Any]:
     """Sub-ledger reconciliation canary.
 
-    Returns ``ar_difference_cents`` which should always be zero in a
-    healthy company. Non-zero means the AR control account has drifted
-    away from the sum of open invoice balances.
+    Returns AR + AP difference fields that should always be zero in a
+    healthy company. Non-zero means a control account has drifted
+    away from the sum of its sub-ledger balances.
     """
     report = build_reconciliation(session, as_of_date=as_of_date)
     return {
         "as_of_date": report.as_of_date.isoformat(),
+        # AR side
         "ar_control_account_id": report.ar_control_account_id,
         "ar_control_account_code": report.ar_control_account_code,
         "ar_control_balance_cents": report.ar_control_balance_cents,
         "ar_sub_ledger_cents": report.ar_sub_ledger_cents,
         "ar_unapplied_credits_cents": report.ar_unapplied_credits_cents,
         "ar_difference_cents": report.ar_difference_cents,
+        # AP side
+        "ap_control_account_id": report.ap_control_account_id,
+        "ap_control_account_code": report.ap_control_account_code,
+        "ap_control_balance_cents": report.ap_control_balance_cents,
+        "ap_sub_ledger_cents": report.ap_sub_ledger_cents,
+        "ap_unapplied_credits_cents": report.ap_unapplied_credits_cents,
+        "ap_difference_cents": report.ap_difference_cents,
     }
