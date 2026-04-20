@@ -17,6 +17,8 @@ from __future__ import annotations
 # for readability.
 from app.models import account as _account  # noqa: F401
 from app.models import audit as _audit  # noqa: F401
+from app.models import bill as _bill  # noqa: F401
+from app.models import bill_payment as _bill_payment  # noqa: F401
 from app.models import contact as _contact  # noqa: F401
 from app.models import invoice as _invoice  # noqa: F401
 from app.models import item as _item  # noqa: F401
