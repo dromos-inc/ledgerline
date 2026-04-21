@@ -214,3 +214,4 @@ class BillLine(CompanyBase):
             f"BillLine(bill={self.bill_id}, #{self.line_number}, "
             f"qty={self.quantity_milli / 1000:.3f}, amount={self.amount_cents})"
         )
+
