@@ -50,18 +50,20 @@ class JournalStatus(str, enum.Enum):
 class JournalSource(str, enum.Enum):
     """Which feature produced this entry.
 
-    Phase 1 only used MANUAL and REVERSAL. Phase 2 adds INVOICE and
-    PAYMENT for the AR sub-ledger (plus BILL and BILL_PAYMENT when S2
-    lands). The ``trg_accounts_control_no_direct_je`` trigger keys off
-    ``source_type='manual'`` to forbid manual JEs against control
-    accounts, so sub-ledger-generated JEs must carry a non-manual
-    value here to land successfully.
+    Phase 1 only used MANUAL and REVERSAL. Phase 2 / S1 added INVOICE
+    and PAYMENT for the AR sub-ledger; S2 adds BILL and BILL_PAYMENT
+    for the AP side. The ``trg_accounts_control_no_direct_je`` trigger
+    keys off ``source_type='manual'`` to forbid manual JEs against
+    control accounts, so sub-ledger-generated JEs must carry a non-
+    manual value here to land successfully.
     """
 
     MANUAL = "manual"
     REVERSAL = "reversal"
     INVOICE = "invoice"
     PAYMENT = "payment"
+    BILL = "bill"
+    BILL_PAYMENT = "bill_payment"
 
 
 class JournalEntry(CompanyBase):
