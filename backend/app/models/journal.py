@@ -191,5 +191,4 @@ class JournalLine(CompanyBase):
     def __repr__(self) -> str:
         return (
             f"JournalLine(entry={self.journal_entry_id}, #{self.line_number}, "
-            f"acct={self.account_id}, dr={self.debit_cents}, cr={self.credit_cents})"
-        )
+            f"acct={self.account_id}, dr={self.debit_cents}, cr={self.credit_centsJH‚ˆ
