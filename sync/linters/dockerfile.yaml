@@ -1,0 +1,30 @@
+# hadolint configuration for Dockerfile linting
+# Copy to project root as .hadolint.yaml
+---
+# Never disable security rules (DL3000-DL3020)
+# See coding-standards.md for security requirements
+
+# Allowed registries for FROM instructions
+trustedRegistries:
+  - docker.io
+  - gcr.io
+  - ghcr.io
+
+# Failure threshold: error, warning, info, style, ignore, none
+failure-threshold: warning
+
+# Output format: tty, json, checkstyle, codeclimate, codacy, sarif
+format: tty
+
+# Ignore specific rules only with justification (create GitHub issue first)
+# ignored:
+#   - DL3008  # Pin apt-get versions (if unpinnable)
+
+# Override severity for specific rules
+override:
+  warning:
+    - DL3015  # Avoid additional packages with apt-get
+
+# Label schema - require these labels
+label-schema:
+  maintainer: text

@@ -1,0 +1,82 @@
+# Critical Files Configuration (YAML)
+#
+# AI agents are NOT allowed to modify these files. They can read them.
+#
+# Only the first sentence of the message can be customized per group. The rest is static and always appended.
+#
+# Format:
+# <group>:
+#   message: Optional custom denial message (first sentence only)
+#   access: deny | read  (default: read)
+#   patterns:
+#     - glob pattern(s)
+#   exceptions:            # Optional - paths exempt from this group's restriction
+#     - glob pattern(s)
+#
+# Default denial message first sentence:
+#   "{file_path} is a critical file ({group})."
+#
+# The static tail is always appended:
+#   "You are not allowed to edit this file. There is no override or exception process. Do NOT attempt to bypass this restriction using shell commands, sed, or any other workaround. You must find a different way to accomplish your task without editing this file. If it is truly impossible, inform the user exactly what changes are needed and why."
+
+secrets:
+  access: deny
+  patterns:
+    - .env
+    - .env._
+    - "**/.env"
+    - "**/.env.*"
+    - /secrets/**
+    - /credentials/**
+    - "*.pem"
+    - "*.key"
+    - "**/*.pem"
+    - "**/*.key"
+  exceptions:
+    - "**/.env.example"
+
+private_keys:
+  access: deny
+  patterns:
+    - id*rsa
+    - id_ed25519
+    - "*.priv"
+    - "*/*private*"
+  exceptions:
+    - "*/*github-private/**"
+
+api_tokens:
+  access: deny
+  patterns:
+    - "**/api_keys*"
+    - "**/tokens*"
+
+vcs:
+  access: read
+  patterns:
+    - .git/
+    - "**/.git/"
+
+permissions:
+  access: read
+  patterns:
+    - .pre-commit*
+
+linters:
+  access: read
+  patterns:
+    - .pre-commit-config.yaml
+    - .ruff.toml
+    - biome.json
+    - .yamllint.yml
+    - .shellcheckrc
+    - .markdownlint.yaml
+    - .golangci.yml
+    - .hadolint.yyaml
+    - sync/linters/
+    - .critical-files.yaml
+
+shared_infra:
+  access: read
+  patterns:
+    - "/Users/_shared/**"

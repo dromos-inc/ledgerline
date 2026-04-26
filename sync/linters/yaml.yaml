@@ -1,0 +1,63 @@
+# yamllint configuration
+# Copy to project root as .yamllint.yaml
+---
+extends: default
+
+rules:
+  # Line length - allow longer lines for URLs and complex values
+  line-length:
+    max: 120
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+
+  # Indentation - 2 spaces, consistent
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+
+  # Comments - require space after #
+  comments:
+    require-starting-space: true
+    ignore-shebangs: true
+    min-spaces-from-content: 1
+
+  # Braces - allow inline for short mappings
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  # Brackets - allow inline for short sequences
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  # Truthy values - only allow true/false (not yes/no/on/off)
+  truthy:
+    allowed-values: ['true', 'false']
+    check-keys: false
+
+  # Document markers - optional
+  document-start: disable
+  document-end: disable
+
+  # Empty lines
+  empty-lines:
+    max: 1
+    max-start: 0
+    max-end: 0
+
+  # Key ordering - disabled (not required)
+  key-ordering: disable
+
+  # New line at end of file
+  new-line-at-end-of-file: enable
+
+  # Trailing spaces - not allowed
+  trailing-spaces: enable
+
+# Ignore generated files and dependencies
+ignore: |
+  node_modules/
+  .venv/
+  vendor/
